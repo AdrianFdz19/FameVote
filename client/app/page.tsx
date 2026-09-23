@@ -19,12 +19,34 @@ const INITIAL_PARTICIPANTS: Participant[] = [
 ];
 
 export default function VotingPage() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
   const [votesLeft, setVotesLeft] = useState<number>(10);
   const [votedId, setVotedId] = useState<string | null>(null);
   const [cooldownTime, setCooldownTime] = useState<number>(0);
 
-  // Efecto para manejar el conteo regresivo de 5 segundos
+  // 1. Initial useEffect: Valida la cookie e inicializa el estado desde Redis
+  useEffect(() => {
+    async function initUserSession() {
+      try {
+        const statusRes = await fetch('/api/vote/status');
+
+        if (!statusRes.ok) return;
+
+        const statusData = await statusRes.json();
+        console.log(statusData);
+        setUserId(statusData.userId);
+        setVotesLeft(statusData.votesLeft);
+        setCooldownTime(statusData.cooldownTime);
+      } catch (err) {
+        console.error('Error al inicializar sesión:', err);
+      }
+    }
+
+    initUserSession();
+  }, []);
+
+  // 2. Conteo regresivo del Cooldown
   useEffect(() => {
     if (cooldownTime <= 0) return;
 
@@ -35,24 +57,48 @@ export default function VotingPage() {
     return () => clearInterval(timer);
   }, [cooldownTime]);
 
-  const handleVote = (id: string) => {
-    // Si no quedan votos o está en cooldown, no hace nada
-    if (votesLeft <= 0 || cooldownTime > 0) return;
+  // 3. Manejo del Voto
+  const handleVote = async (candidateId: string) => {
+    if (!userId) return;
 
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, votes: p.votes + 1 } : p))
-    );
-    setVotesLeft((prev) => prev - 1);
-    
-    // Inicia el delay de 5 segundos
-    setCooldownTime(5);
+    try {
+      setVotedId(candidateId);
 
-    // Feedback visual de click en la tarjeta
-    setVotedId(id);
-    setTimeout(() => setVotedId(null), 600)
+      const response = await fetch(`/api/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Ya NO mandamos userId: 1, la API lo lee directo de las cookies
+        body: JSON.stringify({ userId, candidateId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Error enviando el voto');
+        return;
+      }
+
+      // Actualizamos estado con la respuesta de Redis
+      setVotesLeft(data.votesLeft);
+      setCooldownTime(10); // Cooldown real de 60 segundos
+
+      // Actualizamos el contador del candidato en la UI
+      if (data.candidateTotalVotes) {
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.id === candidateId ? { ...p, votes: data.candidateTotalVotes } : p
+          )
+        );
+      }
+
+      setTimeout(() => setVotedId(null), 1000);
+    } catch (err: any) {
+      console.error(err);
+    }
   };
 
-  const isButtonDisabled = votesLeft === 0 || cooldownTime > 0;
+  // Se deshabilita si no hay votos, si hay cooldown o si la sesión aún está cargando (!userId)
+  const isButtonDisabled = votesLeft === 0 || cooldownTime > 0 || !userId;
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white selection:bg-rose-500 selection:text-white">
@@ -102,7 +148,7 @@ export default function VotingPage() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent opacity-80" />
-                  
+
                   {/* Badge Role */}
                   <span className="absolute top-3 left-3 bg-neutral-950/80 backdrop-blur-md text-neutral-300 text-xs font-medium px-2.5 py-1 rounded-md border border-neutral-800">
                     {participant.role}
@@ -129,7 +175,9 @@ export default function VotingPage() {
                         : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                     }`}
                   >
-                    {votesLeft === 0
+                    {!userId
+                      ? 'Cargando...'
+                      : votesLeft === 0
                       ? 'Sin Votos'
                       : cooldownTime > 0
                       ? `Espera ${cooldownTime}s...`
