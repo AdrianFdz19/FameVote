@@ -1,4 +1,3 @@
-// app/register/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -17,9 +16,9 @@ export default function RegisterPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Validar coincidencia de contraseñas
+    // Validate password match
     if (password !== confirmPassword) {
-      setErrorMessage('Las contraseñas no coinciden');
+      setErrorMessage('Passwords do not match');
       setIsLoading(false);
       return;
     }
@@ -34,12 +33,12 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Error al registrar el usuario');
+        throw new Error(data.error || 'Failed to register user');
       }
 
-      setSuccessMessage('¡Cuenta creada exitosamente! Redirigiendo al inicio de sesión...');
+      setSuccessMessage('Account created successfully! Redirecting to sign in...');
       
-      // Redirigir al login tras 2 segundos
+      // Redirect to login page after 2 seconds
       setTimeout(() => {
         window.location.href = '/auth/login';
       }, 2000);
@@ -58,13 +57,13 @@ export default function RegisterPage() {
       <main className="relative w-full max-w-md bg-neutral-900/50 border border-neutral-800 rounded-2xl p-8 backdrop-blur-xl shadow-2xl shadow-rose-500/5">
         <div className="text-center mb-8">
           <span className="inline-block px-4 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold tracking-wider uppercase mb-3">
-            Únete a la Comunidad
+            Join the Community
           </span>
           <h1 className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-neutral-200 to-neutral-400">
-            Crear Cuenta
+            Create Account
           </h1>
           <p className="text-neutral-400 text-sm mt-2">
-            Regístrate para participar y emitir tus votos diarios en FamVote.
+            Sign up to participate and cast your daily votes on FamVote.
           </p>
         </div>
 
@@ -83,21 +82,21 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-2">
-              Correo Electrónico
+              Email Address
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
+              placeholder="you@email.com"
               className="w-full px-4 py-3 bg-neutral-950/80 border border-neutral-800 rounded-xl text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all duration-200 text-sm"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-2">
-              Contraseña
+              Password
             </label>
             <input
               type="password"
@@ -112,7 +111,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-300 mb-2">
-              Confirmar Contraseña
+              Confirm Password
             </label>
             <input
               type="password"
@@ -134,14 +133,14 @@ export default function RegisterPage() {
                 : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
             }`}
           >
-            {isLoading ? 'Registrando...' : 'Crear mi cuenta'}
+            {isLoading ? 'Registering...' : 'Create Account'}
           </button>
         </form>
 
         <div className="mt-8 text-center text-xs text-neutral-500">
-          ¿Ya tienes una cuenta?{' '}
+          Already have an account?{' '}
           <a href="/auth/login" className="text-rose-400 hover:underline font-medium">
-            Inicia sesión aquí
+            Sign in here
           </a>
         </div>
       </main>
