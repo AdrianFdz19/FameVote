@@ -10,11 +10,11 @@ resource "aws_sqs_queue" "vote_dlq" {
 
 # 2. Main Ingestion SQS Queue - Buffers incoming vote payload bursts
 resource "aws_sqs_queue" "vote_queue" {
-  name                       = "famvote-${var.environment}-votes-queue"
-  delay_seconds              = 0
-  max_message_size           = 262144 # 256 KB
-  message_retention_seconds  = var.queue_retention_seconds
-  receive_wait_time_seconds  = 10     # Long polling (reduces worker CPU & AWS costs)
+  name                      = "famvote-${var.environment}-votes-queue"
+  delay_seconds             = 0
+  max_message_size          = 262144 # 256 KB
+  message_retention_seconds = var.queue_retention_seconds
+  receive_wait_time_seconds = 10 # Long polling (reduces worker CPU & AWS costs)
 
   # Redrive policy sends messages to the DLQ after failed attempts
   redrive_policy = jsonencode({
