@@ -52,6 +52,10 @@ jobs:
           terraform fmt -check
 
       - name: Terraform Init & Validate
+        env:
+          AWS_ACCESS_KEY_ID: "mock_key"
+          AWS_SECRET_ACCESS_KEY: "mock_secret"
+          AWS_DEFAULT_REGION: "us-east-1"
         run: |
           cd terraform/production
           terraform init -backend=false
