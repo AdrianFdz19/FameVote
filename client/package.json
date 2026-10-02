@@ -6,16 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "reset:dev": "tsx scripts/reset-dev.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1145.0",
+    "@aws-sdk/lib-dynamodb": "^3.1145.0",
+    "@aws-sdk/util-dynamodb": "^3.996.9",
     "bcryptjs": "^3.0.3",
     "ioredis": "^6.0.0",
     "jose": "^6.2.12",
     "next": "16.3.4",
     "pg": "^8.23.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "swr": "^2.5.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,9 +29,11 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

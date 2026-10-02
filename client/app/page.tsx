@@ -1,258 +1,160 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Header from './components/header';
+import React from 'react';
+import Header from '@/app/components/header';
+import Link from 'next/link';
+import { useAuth } from './context/AuthContext';
+import useSWR from 'swr';
 
-interface Participant {
-  id: string;
-  name: string;
-  role: string;
-  imageUrl: string;
-  votes: number;
-}
+const fetcher = ( url: string ) => fetch(url).then(res => res.json());
 
-const INITIAL_PARTICIPANTS: Participant[] = [
-  { id: '1', name: 'Elena Rostova', role: 'The Strategist', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&q=80', votes: 1420 },
-  { id: '2', name: 'Marcus Vance', role: 'The Competitor', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&q=80', votes: 980 },
-  { id: '3', name: 'Sofia Chen', role: 'The Peacemaker', imageUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&q=80', votes: 2150 },
-  { id: '4', name: 'Mateo Silva', role: 'The Charismatic', imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&q=80', votes: 1730 },
-  { id: '5', name: 'Aria Taylor', role: 'The Wildcard', imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&q=80', votes: 890 },
-];
+export default function HomePage() {
 
-export default function VotingPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
-  const [votesLeft, setVotesLeft] = useState<number>(10);
-  const [votedId, setVotedId] = useState<string | null>(null);
-  const [cooldownTime, setCooldownTime] = useState<number>(0);
-  const [animateBadge, setAnimateBadge] = useState<boolean>(false);
+  const { isAuthenticated } = useAuth();
 
-  // 1. Initial useEffect: Validates cookie and initializes state from Redis
-  useEffect(() => {
-    async function initUserSession() {
-      try {
-        const statusRes = await fetch('/api/vote/status');
+  const { data, error, isLoading } = useSWR('/api/votes/results', fetcher, {
+    refreshInterval: 10000,
+    revalidateOnFocus: true,
+  });
 
-        if (!statusRes.ok) return;
+  let totalVotes;
 
-        const statusData = await statusRes.json();
-        setUserId(statusData.userId);
-        setVotesLeft(statusData.votesLeft);
-        setCooldownTime(statusData.cooldownTime);
-      } catch (err) {
-        console.error('Failed to initialize session:', err);
-      }
-    }
-
-    initUserSession();
-  }, []);
-
-  // 2. Cooldown Countdown Timer
-  useEffect(() => {
-    if (cooldownTime <= 0) return;
-
-    const timer = setInterval(() => {
-      setCooldownTime((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [cooldownTime]);
-
-  // 3. Vote Handler
-  const handleVote = async (candidateId: string) => {
-    if (!userId || votesLeft <= 0) return;
-
-    try {
-      setVotedId(candidateId);
-      setAnimateBadge(true);
-
-      const response = await fetch(`/api/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, candidateId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.error || 'Failed to submit vote');
-        setVotedId(null);
-        setAnimateBadge(false);
-        return;
-      }
-
-      setVotesLeft(data.votesLeft);
-      setCooldownTime(10);
-
-      if (data.candidateTotalVotes) {
-        setParticipants((prev) =>
-          prev.map((p) =>
-            p.id === candidateId ? { ...p, votes: data.candidateTotalVotes } : p
-          )
-        );
-      }
-
-      setTimeout(() => {
-        setVotedId(null);
-        setAnimateBadge(false);
-      }, 1200);
-    } catch (err: any) {
-      console.error(err);
-      setVotedId(null);
-      setAnimateBadge(false);
-    }
+  if (isLoading) {
+    totalVotes = <p>Loading...</p>
+  } else if (data) {
+    totalVotes = <p>{data.totalVotes}</p>
+  } else if (error) {
+    totalVotes = <p>Error trying fetching the total votes</p>
   };
 
-  const isButtonDisabled = votesLeft === 0 || cooldownTime > 0 || !userId;
-
   return (
-    <div className="min-h-screen bg-neutral-950 text-white selection:bg-rose-500 selection:text-white relative overflow-x-hidden">
-      {/* Dynamic Keyframes */}
-      <style>{`
-        @keyframes floatUp {
-          0% { opacity: 1; transform: translateY(0) scale(0.8); }
-          50% { opacity: 1; transform: translateY(-40px) scale(1.2); }
-          100% { opacity: 0; transform: translateY(-80px) scale(1); }
-        }
-        .animate-float-up {
-          animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
-
-      {/* Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-rose-600/20 via-purple-600/10 to-transparent blur-3xl pointer-events-none" />
-      
+    <div className="min-h-screen bg-neutral-950 text-white selection:bg-rose-500 selection:text-white relative">
       <Header />
 
-      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <header className="text-center max-w-3xl mx-auto mb-10">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold tracking-wider uppercase mb-4">
-            Grand Finale • Live Voting
-          </span>
-          <h1 className="text-4xl sm:text-6xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-neutral-200 to-neutral-400 mb-4">
-            Who should be saved this week?
-          </h1>
-          <p className="text-neutral-400 text-base sm:text-lg">
-            Support your favorite participant. Daily vote limits are enforced to keep the competition fair.
-          </p>
-        </header>
+      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 
-        {/* Counter Badge */}
-        <div className="sticky top-20 z-20 flex justify-center mb-8">
-          <div className={`flex items-center gap-3 bg-neutral-900/90 backdrop-blur-md border border-neutral-800 px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 ${
-            animateBadge ? 'scale-110 border-rose-500/50 shadow-rose-500/20' : 'scale-100'
-          }`}>
-            <span className="text-sm font-medium text-neutral-300">Votes remaining:</span>
-            <span className={`text-lg font-bold px-2.5 py-0.5 rounded-full transition-all duration-300 ${
-              votesLeft > 0 ? 'bg-rose-500 text-white' : 'bg-neutral-800 text-neutral-500'
-            }`}>
-              {votesLeft}
+        {/* HERO SECTION */}
+        <section className="text-center max-w-4xl mx-auto pt-8 pb-16 border-b border-neutral-800">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-900 border border-neutral-800 text-neutral-400 text-xs font-mono tracking-wider uppercase mb-6">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            Live Event • Season 2026
+          </div>
+
+          <h1 className="text-4xl sm:text-7xl font-bold tracking-tight text-white mb-6 uppercase">
+            Decide Who Stays. <br />
+            <span className="text-neutral-500">Shape The Finale.</span>
+          </h1>
+
+          <p className="text-neutral-400 text-base sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-sans">
+            The ultimate community-driven voting platform. Cast your daily votes in real time, support your favorite contenders, and follow the live leaderboard.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            {isAuthenticated ? (
+              <Link
+                href="/vote"
+                className="w-full sm:w-auto bg-white hover:bg-neutral-200 text-black font-mono font-bold text-xs uppercase tracking-wider py-4 px-8 transition-colors border border-white"
+              >
+                Cast Your Vote
+              </Link>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="w-full sm:w-auto bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-mono text-xs uppercase tracking-wider py-4 px-8 transition-colors border border-neutral-800"
+              >
+                Sign In to Account
+              </Link>
+            )}
+          </div>
+        </section>
+
+        {/* METRICS & STATUS BAR */}
+        <section className="py-12 border-b border-neutral-800 grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+          <div className="bg-neutral-900/50 border border-neutral-800 p-6">
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500 block mb-2">
+              Active Voters
+            </span>
+            <span className="text-3xl font-mono font-bold text-white">
+              125000
             </span>
           </div>
-        </div>
 
-        {/* Out of Votes Completion Banner */}
-        {votesLeft === 0 && (
-          <div className="mb-10 max-w-2xl mx-auto p-6 rounded-2xl bg-gradient-to-r from-rose-950/40 via-neutral-900/90 to-rose-950/40 border border-rose-500/30 text-center backdrop-blur-xl shadow-2xl animate-fade-in">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 text-2xl mb-3">
-              🎉
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight mb-2">
-              Thank You for Voting!
+          <div className="bg-neutral-900/50 border border-neutral-800 p-6">
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500 block mb-2">
+              Total Votes Cast
+            </span>
+            <span className="text-3xl font-mono font-bold text-rose-500">{ totalVotes }</span>
+          </div>
+
+          <div className="bg-neutral-900/50 border border-neutral-800 p-6">
+            <span className="text-xs font-mono uppercase tracking-widest text-neutral-500 block mb-2">
+              Next Live Broadcast
+            </span>
+            <span className="text-3xl font-mono font-bold text-white">21:00 EST</span>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS / RULES */}
+        <section className="py-16">
+          <div className="mb-12">
+            <span className="text-xs font-mono uppercase tracking-widest text-rose-500 block mb-2">
+              Protocol Rules
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">
+              How FamVote Works
             </h2>
-            <p className="text-neutral-300 text-sm sm:text-base leading-relaxed">
-              You've used all your daily votes. Tune in tonight during the live broadcast to reveal the final results!
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="border border-neutral-800 p-6 bg-neutral-900/30">
+              <span className="text-xs font-mono text-neutral-500 block mb-4">01 // AUTHENTICATION</span>
+              <h3 className="text-lg font-bold text-white mb-2">Verified Voting</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Log in to claim your daily vote quota. One authenticated session guarantees a fair and fraud-free voting process.
+              </p>
+            </div>
+
+            <div className="border border-neutral-800 p-6 bg-neutral-900/30">
+              <span className="text-xs font-mono text-neutral-500 block mb-4">02 // RATE LIMITING</span>
+              <h3 className="text-lg font-bold text-white mb-2">Daily Quotas & Cooldowns</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Every user gets 10 votes per day with enforced cooldown intervals between casts to prevent automated spamming.
+              </p>
+            </div>
+
+            <div className="border border-neutral-800 p-6 bg-neutral-900/30">
+              <span className="text-xs font-mono text-neutral-500 block mb-4">03 // LIVE BROADCAST</span>
+              <h3 className="text-lg font-bold text-white mb-2">Nightly Results</h3>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Polls lock ahead of the evening live stream. Tally totals are calculated and revealed live during the show.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* BOTTOM CTA BANNER */}
+        <section className="mt-8 bg-neutral-900 border border-neutral-800 p-8 sm:p-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              Ready to support your participant?
+            </h3>
+            <p className="text-neutral-400 text-sm font-mono">
+              Voting lines are open now. Daily limits reset every midnight UTC.
             </p>
           </div>
-        )}
-
-        {/* Participants Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          {participants.map((participant) => {
-            const isJustVoted = votedId === participant.id;
-
-            return (
-              <div
-                key={participant.id}
-                className={`group relative bg-neutral-900/50 border border-neutral-800 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between hover:shadow-xl hover:shadow-rose-500/10 ${
-                  isJustVoted 
-                    ? 'scale-105 border-rose-500 ring-2 ring-rose-500/50 shadow-2xl shadow-rose-500/20' 
-                    : 'scale-100 hover:border-rose-500/50'
-                }`}
-              >
-                {/* Floating Burst Particles */}
-                {isJustVoted && (
-                  <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
-                    <span className="animate-float-up absolute text-rose-500 font-black text-3xl drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]">
-                      +1 VOTE!
-                    </span>
-                    <span className="animate-float-up absolute text-rose-400 text-2xl -translate-x-12 -translate-y-4 delay-100">
-                      ❤️
-                    </span>
-                    <span className="animate-float-up absolute text-rose-400 text-2xl translate-x-12 -translate-y-2 delay-200">
-                      🔥
-                    </span>
-                  </div>
-                )}
-
-                {/* Image Container */}
-                <div className="relative aspect-[4/5] overflow-hidden bg-neutral-800">
-                  <img
-                    src={participant.imageUrl}
-                    alt={participant.name}
-                    className={`w-full h-full object-cover transition-transform duration-500 ${
-                      isJustVoted ? 'scale-110 brightness-110' : 'group-hover:scale-105'
-                    }`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent opacity-80" />
-
-                  {/* Role Badge */}
-                  <span className="absolute top-3 left-3 bg-neutral-950/80 backdrop-blur-md text-neutral-300 text-xs font-medium px-2.5 py-1 rounded-md border border-neutral-800">
-                    {participant.role}
-                  </span>
-                </div>
-
-                {/* Info & Action */}
-                <div className="p-5 flex flex-col flex-grow justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-white tracking-wide group-hover:text-rose-400 transition-colors">
-                      {participant.name}
-                    </h3>
-                    <p className={`text-sm mt-1 font-mono transition-colors duration-300 ${
-                      isJustVoted ? 'text-rose-400 font-bold' : 'text-neutral-400'
-                    }`}>
-                      {participant.votes.toLocaleString()} total votes
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => handleVote(participant.id)}
-                    disabled={isButtonDisabled}
-                    className={`mt-6 w-full py-3 px-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 shadow-md ${
-                      isJustVoted
-                        ? 'bg-emerald-600 text-white scale-95 shadow-emerald-600/30'
-                        : !isButtonDisabled
-                        ? 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white shadow-rose-600/20'
-                        : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {!userId
-                      ? 'Loading...'
-                      : isJustVoted
-                      ? 'Voted! ✓'
-                      : votesLeft === 0
-                      ? 'Votes Exhausted'
-                      : cooldownTime > 0
-                      ? `Wait ${cooldownTime}s...`
-                      : 'Vote Now'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          <Link
+            href="/vote"
+            className="w-full sm:w-auto bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold text-xs uppercase tracking-wider py-4 px-8 transition-colors shrink-0 text-center"
+          >
+            Enter Voting Booth
+          </Link>
+        </section>
       </main>
+
+      {/* FOOTER */}
+      <footer className="border-t border-neutral-800 mt-20 py-8 text-center font-mono text-xs text-neutral-600">
+        FamVote Engine • All Rights Reserved © 2026
+      </footer>
     </div>
   );
 }

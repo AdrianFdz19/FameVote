@@ -1,1 +1,15 @@
-docker*
+# Terraform
+*.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Python / Virtual Environment
+venv/
+__pycache__/
+*.pyc
+
+# Local Environment
+.env
+.env.local

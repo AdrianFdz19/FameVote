@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Base de datos relacional para Usuarios
+  postgres:
+    image: postgres:16-alpine
+    container_name: famvote-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: famvote_admin
+      POSTGRES_PASSWORD: dev_password_123
+      POSTGRES_DB: famvote_auth
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # En-memoria para Sesiones, Rate Limiting y Conteo en Vivo
+  redis:
+    image: redis:7-alpine
+    container_name: famvote-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+
+  
