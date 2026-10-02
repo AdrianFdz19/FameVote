@@ -2,7 +2,6 @@
 resource "aws_sqs_queue" "vote_dlq" {
   name                      = "famvote-${var.environment}-votes-dlq"
   message_retention_seconds = 1209600 # Retain unprocessable messages for 14 days
-  sqs_managed_sse_enabled   = true
 
   tags = {
     Name = "famvote-${var.environment}-votes-dlq"
@@ -16,7 +15,6 @@ resource "aws_sqs_queue" "vote_queue" {
   max_message_size           = 262144 # 256 KB
   message_retention_seconds  = var.queue_retention_seconds
   receive_wait_time_seconds  = 10     # Long polling (reduces worker CPU & AWS costs)
-  sqs_managed_sse_enabled    = true
 
   # Redrive policy sends messages to the DLQ after failed attempts
   redrive_policy = jsonencode({
