@@ -1,31 +1,25 @@
 terraform {
-    required_providers {
-      aws = {
-        source = "hashicorp/aws"
-        version = "~> 5.92"
-      }
-    }
+  required_version = ">= 1.5.0"
 
-    # Remote State Storage
-    backend "s3" {
-      bucket = "famvote-prod-bucket"
-      key = "famvote/prod/terraform.tfstate"
-      region = "us-east-1"
-      dynamodb_table = "famvote-tf-locks"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
+  }
 }
 
 provider "aws" {
-    region = "us-east-1"
+  region = "us-east-1"
 
 
-    default_tags {
-      tags = {
-        Project = "FamVote"
-        ManagedBy = "Terraform"
-        Environment = var.environment 
-      }
-    } 
+  default_tags {
+    tags = {
+      Project     = "FamVote"
+      ManagedBy   = "Terraform"
+      Environment = var.environment
+    }
+  }
 }
 
 data "aws_caller_identity" "current" {}

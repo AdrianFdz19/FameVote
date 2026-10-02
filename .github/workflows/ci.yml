@@ -58,5 +58,8 @@ jobs:
           AWS_DEFAULT_REGION: "us-east-1"
         run: |
           cd terraform/production
+          # Ocultar temporalmente el backend S3 para la etapa de validación en CI
+          if [ -f backend.tf ]; then mv backend.tf backend.tf.ci; fi
+          
           terraform init -backend=false
           terraform validate
