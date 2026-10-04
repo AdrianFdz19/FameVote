@@ -194,6 +194,8 @@ resource "aws_api_gateway_method_settings" "all" {
 
   depends_on = [
     aws_api_gateway_account.main,
-    aws_api_gateway_stage.api_stage
+    aws_api_gateway_stage.api_stage,
+    aws_cloudwatch_log_group.api_gw_logs,
+    aws_cloudwatch_log_group.api_gw_execution_logs
   ]
 }

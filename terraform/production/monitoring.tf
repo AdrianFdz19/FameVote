@@ -21,10 +21,21 @@ resource "aws_api_gateway_account" "main" {
   cloudwatch_role_arn = aws_iam_role.apigw_cloudwatch.arn
 }
 
-# 2. Grupo de Logs para API Gateway
+# 1. Custom Access Logs (Your existing resource)
 resource "aws_cloudwatch_log_group" "api_gw_logs" {
   name              = "/aws/apigateway/${aws_api_gateway_rest_api.vote_api.name}"
   retention_in_days = 7
+}
+
+# 2. Execution Logs (Auto-created by API Gateway stage logging)
+resource "aws_cloudwatch_log_group" "api_gw_execution_logs" {
+  name              = "API-Gateway-Execution-Logs_${aws_api_gateway_rest_api.vote_api.id}/${var.environment}"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "famvote-${var.environment}-apigw-execution-logs"
+    Environment = var.environment
+  }
 }
 
 # 3. Alarma en CloudWatch para la Cola SQS

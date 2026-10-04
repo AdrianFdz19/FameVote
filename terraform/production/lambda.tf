@@ -5,6 +5,19 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../../lambda"
   output_path = "${path.module}/lambda_vote_processor.zip"
+
+  excludes = [
+    "venv",
+    "venv/**",
+    "__pycache__",
+    "__pycache__/**",
+    ".pytest_cache",
+    ".pytest_cache/**",
+    "tests",
+    "tests/**",
+    "test_lambda_function.py",
+    "requirements-dev.txt"
+  ]
 }
 
 # 2. Rol IAM para la Lambda
