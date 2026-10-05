@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     // 3. Insert new user into PostgreSQL
     const result = await pool.query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at',
+      'INSERT INTO users (email, password_hash, updated_at) VALUES ($1, $2, NOW()) RETURNING id, email, created_at',
       [email, passwordHash]
     );
 
