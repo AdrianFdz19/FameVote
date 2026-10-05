@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error en /api/auth/login:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error },
       { status: 500 }
     );
   }
