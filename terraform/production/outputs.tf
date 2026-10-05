@@ -17,3 +17,9 @@ output "sqs_dlq_arn" {
   description = "ARN of the Dead Letter Queue"
   value       = aws_sqs_queue.vote_dlq.arn
 }
+
+#Output para obtener el Endpoint de conexión
+output "redis_endpoint" {
+  value       = aws_elasticache_cluster.redis.cache_nodes[0].address
+  description = "Endpoint primario de Redis para conectar en Next.js"
+}

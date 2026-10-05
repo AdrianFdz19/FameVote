@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers'
+import { cookies } from 'next/headers';
 import { redis } from '@/lib/redis';
-import { jwtVerify } from 'jose'
+import { jwtVerify } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-key-famvote-2026'
@@ -9,9 +9,9 @@ const JWT_SECRET = new TextEncoder().encode(
 
 export async function POST(request: Request) {
   try {
-
+    // 1. Validar Token JWT desde la Cookie
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value; // Cambia 'auth_token' por el nombre exacto de tu cookie
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
       return NextResponse.json(
@@ -23,8 +23,6 @@ export async function POST(request: Request) {
     let userId: string;
     try {
       const { payload } = await jwtVerify(token, JWT_SECRET);
-
-      // Extraer el userId del payload (puede estar en 'sub' o como 'userId')
       userId = (payload.userId || payload.sub) as string;
 
       if (!userId) {
@@ -34,16 +32,13 @@ export async function POST(request: Request) {
         );
       }
     } catch (authError) {
-      console.error('Error verificando JWT con jose:', authError);
       return NextResponse.json(
         { error: 'Sesión expirada o token inválido.' },
         { status: 401 }
       );
     }
 
-    // 3. Extraer únicamente candidateId del body (userId ya viene validado del servidor)
     const { candidateId } = await request.json();
-
     if (!candidateId) {
       return NextResponse.json(
         { error: 'candidateId es requerido.' },
@@ -55,9 +50,12 @@ export async function POST(request: Request) {
     const votesLeftKey = `user:${userId}:votes_left`;
     const candidateVotesKey = `candidate:${candidateId}:votes`;
 
-    // 1. Validar Cooldown (60 segundos)
-    const hasCooldown = await redis.get(cooldownKey);
-    if (hasCooldown) {
+    // 2. APLICAR COOLDOWN ATÓMICO (Bloquea race conditions instantáneamente)
+    // 'NX' = Solo crea la clave si NO existe.
+    // 'EX', 10 = Expiración en 10 segundos.
+    const acquiredLock = await redis.set(cooldownKey, 'active', 'EX', 10, 'NX');
+
+    if (!acquiredLock) {
       const ttl = await redis.ttl(cooldownKey);
       return NextResponse.json(
         { error: `Debes esperar ${ttl} segundos antes de volver a votar.` },
@@ -65,47 +63,58 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Validar o Inicializar saldo de votos diarios (ej. 10 votos)
+    // 3. Validar / Inicializar saldo de votos diarios
     let votesLeft = await redis.get(votesLeftKey);
 
     if (votesLeft === null) {
-      // Primera vez en el día: se asignan 10 votos con un TTL de 24 horas (86400s)
       await redis.set(votesLeftKey, '10', 'EX', 86400);
       votesLeft = '10';
     }
 
     const remainingVotes = parseInt(votesLeft, 10);
     if (remainingVotes <= 0) {
+      // Liberamos el cooldown si la operación falló por falta de votos
+      await redis.del(cooldownKey);
       return NextResponse.json(
         { error: 'Has agotado tus votos diarios.' },
         { status: 400 }
       );
     }
 
-    // 3. Descontar 1 voto al usuario y activar el Cooldown por 60s
-    const newVotesLeft = await redis.decr(votesLeftKey);
-    await redis.set(cooldownKey, 'active', 'EX', 10);
+    // 4. PIPELINE: Restar voto al usuario e incrementar candidato en UN solo viaje de red
+    const pipeline = redis.pipeline();
+    pipeline.decr(votesLeftKey);
+    pipeline.incrby(candidateVotesKey, 1);
 
-    // 4. Incrementar contador global en tiempo real para el candidato
-    const totalCandidateVotes = await redis.incrby(candidateVotesKey, 1);
+    const results = await pipeline.exec();
 
-    // 5. Enviar evento a SQS a través de API Gateway
+    // TypeScript Check: Validar que results no sea null
+    if (!results) {
+      throw new Error('Falló la ejecución del pipeline en Redis.');
+    }
+
+    const [decrErr, decrRes] = results[0];
+    const [incrErr, incrRes] = results[1];
+
+    if (decrErr || incrErr) {
+      throw new Error('Error al procesar comandos dentro del pipeline de Redis.');
+    }
+
+    const newVotesLeft = decrRes as number;
+    const totalCandidateVotes = incrRes as number;
+
+    // 5. Enviar evento a API Gateway / SQS (Asíncrono)
     const apiGatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_VOTE_URL;
-
     if (apiGatewayUrl) {
-      // Fire-and-forget o espera asíncrona no bloqueante
       fetch(apiGatewayUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           candidateId,
           timestamp: new Date().toISOString(),
         }),
       }).catch((sqsError) => {
-        // Log de error sin bloquear la respuesta de la UI al usuario
         console.error('Error enviando evento a API Gateway / SQS:', sqsError);
       });
     }
