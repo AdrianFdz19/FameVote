@@ -42,10 +42,10 @@ export async function POST(request: Request) {
       { message: 'Usuario registrado exitosamente', user: newUser },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en /api/auth/register:', error);
     return NextResponse.json(
-      { error },
+      { error: error?.message || 'Internal Server Error' },
       { status: 500 }
     );
   }

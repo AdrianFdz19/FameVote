@@ -2,7 +2,7 @@
 set -e
 
 # Hardcode the deployed API Gateway endpoint URL
-API_URL="https://ls1vvuelm3.execute-api.us-east-1.amazonaws.com/prod/v1/vote"
+API_URL="https://xj0kvayrx8.execute-api.us-east-1.amazonaws.com/prod/v1/vote"
 
 echo "=========================================="
 echo " 🚀 TESTING FAMVOTE INGESTION ENGINE "
