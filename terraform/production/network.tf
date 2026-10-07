@@ -45,7 +45,7 @@ resource "aws_subnet" "public_b" {
   }
 }
 
-# 4. Subredes Privadas (Para ElastiCache Redis y recursos aislados)
+# 4. Subredes Privadas (Para bases de datos o recursos aislados)
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.10.0/24"
@@ -115,13 +115,3 @@ resource "aws_route_table_association" "private_b" {
   route_table_id = aws_route_table.private.id
 }
 
-# 7. Subnet Group Requerido para ElastiCache Redis
-resource "aws_elasticache_subnet_group" "redis_subnet_group" {
-  name       = "famvote-${var.environment}-redis-subnet-group"
-  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-
-  tags = {
-    Name        = "famvote-${var.environment}-redis-subnet-group"
-    Environment = var.environment
-  }
-}
