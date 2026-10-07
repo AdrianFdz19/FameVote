@@ -1,3 +1,5 @@
+// /api/vote/route.ts
+
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { redis } from '@/lib/redis';
