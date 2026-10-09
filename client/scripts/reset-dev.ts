@@ -1,75 +1,87 @@
 // scripts/reset-dev.ts
-import Redis from 'ioredis';
+import { Redis } from '@upstash/redis';
+import ioredis from 'ioredis';
 import { DynamoDBClient, ScanCommand, BatchWriteItemCommand } from '@aws-sdk/client-dynamodb';
 import * as dotenv from 'dotenv';
 
-// Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
-
-// 1. Initialize ioredis client using configuration variables
-const host = process.env.REDIS_HOST || 'localhost';
-const port = Number(process.env.REDIS_PORT) || 6379;
-
-const redis = new Redis({
-  host,
-  port,
-  maxRetriesPerRequest: 3,
-});
-
-// 2. Initialize DynamoDB v3 client
-const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-});
 
 const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE || 'famvote_records';
 
 async function resetRedis() {
-  console.log(`🧹 Clearing Redis database at ${host}:${port}...`);
-  // flushall removes all keys from Redis
-  await redis.flushall();
-  console.log('✅ Redis successfully reset.');
+  console.log('🧹 Clearing Redis database...');
+
+  // If Upstash credentials exist, use HTTP SDK; otherwise fallback to local ioredis
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    const upstash = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    await upstash.flushdb();
+    console.log('✅ Upstash Redis successfully reset (FLUSHDB).');
+  } else {
+    const host = process.env.REDIS_HOST || 'localhost';
+    const port = Number(process.env.REDIS_PORT) || 6379;
+    const localRedis = new ioredis({ host, port, maxRetriesPerRequest: 3 });
+    await localRedis.flushall();
+    localRedis.disconnect();
+    console.log(`✅ Local Redis (${host}:${port}) successfully reset.`);
+  }
 }
 
 async function resetDynamoDB() {
   console.log(`🧹 Clearing DynamoDB table: ${DYNAMODB_TABLE}...`);
 
-  // Scan all existing primary keys (PK and SK) in the table
-  const scanCommand = new ScanCommand({
-    TableName: DYNAMODB_TABLE,
-    ProjectionExpression: 'PK, SK',
+  const dynamoClient = new DynamoDBClient({
+    region: process.env.AWS_REGION || 'us-east-1',
   });
 
-  const scanResult = await dynamoClient.send(scanCommand);
-  const items = scanResult.Items || [];
+  let totalDeleted = 0;
+  let lastEvaluatedKey: Record<string, any> | undefined;
 
-  if (items.length === 0) {
-    console.log('ℹ️ DynamoDB table is already empty.');
-    return;
-  }
+  // Loop to handle DynamoDB 1MB Scan pagination
+  do {
+    const scanCommand: ScanCommand = new ScanCommand({
+      TableName: DYNAMODB_TABLE,
+      ProjectionExpression: 'PK, SK',
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
 
-  // Structure delete requests
-  const deleteRequests = items.map((item) => ({
-    DeleteRequest: {
-      Key: {
-        PK: item.PK,
-        SK: item.SK,
-      },
-    },
-  }));
+    const scanResult = await dynamoClient.send(scanCommand);
+    const items = scanResult.Items || [];
+    lastEvaluatedKey = scanResult.LastEvaluatedKey;
 
-  // Process in batches of up to 25 items (DynamoDB BatchWriteItem limit)
-  for (let i = 0; i < deleteRequests.length; i += 25) {
-    const chunk = deleteRequests.slice(i, i + 25);
-    await dynamoClient.send(
-      new BatchWriteItemCommand({
-        RequestItems: {
-          [DYNAMODB_TABLE]: chunk,
+    if (items.length === 0) continue;
+
+    // Build batch delete requests (max 25 items per BatchWriteItemCommand)
+    const deleteRequests = items.map((item) => ({
+      DeleteRequest: {
+        Key: {
+          PK: item.PK,
+          SK: item.SK,
         },
-      })
-    );
-  }
+      },
+    }));
 
-  console.log(`✅ ${items.length} items deleted from DynamoDB.`);
+    for (let i = 0; i < deleteRequests.length; i += 25) {
+      const chunk = deleteRequests.slice(i, i + 25);
+      await dynamoClient.send(
+        new BatchWriteItemCommand({
+          RequestItems: {
+            [DYNAMODB_TABLE]: chunk,
+          },
+        })
+      );
+    }
+
+    totalDeleted += items.length;
+  } while (lastEvaluatedKey);
+
+  if (totalDeleted === 0) {
+    console.log('ℹ️ DynamoDB table is already empty.');
+  } else {
+    console.log(`✅ ${totalDeleted} items deleted from DynamoDB.`);
+  }
 }
 
 async function main() {
@@ -78,12 +90,10 @@ async function main() {
     await resetRedis();
     await resetDynamoDB();
     console.log('\n✨ Voting environment cleared successfully.');
+    process.exit(0);
   } catch (error) {
     console.error('❌ Error during reset:', error);
-  } finally {
-    // Disconnect Redis client to release the process
-    redis.disconnect();
-    process.exit(0);
+    process.exit(1);
   }
 }
 

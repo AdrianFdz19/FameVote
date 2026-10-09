@@ -4,9 +4,12 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import pool from '@/lib/db'; // Asegúrate de que la ruta sea correcta según tu estructura de proyecto
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-key-famvote-2026'
-);
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function POST(request: Request) {
   try {

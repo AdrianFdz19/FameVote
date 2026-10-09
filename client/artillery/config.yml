@@ -1,0 +1,26 @@
+config:
+  target: "http://localhost:3000"
+  processor: "./processor.cjs"
+  phases:
+    - duration: 10
+      arrivalRate: 5
+      name: "Warm-up (5 RPS)"
+    - duration: 20
+      arrivalRate: 20
+      rampTo: 100
+      name: "Ramp-up (20 -> 100 RPS)"
+    - duration: 30
+      arrivalRate: 200
+      name: "Sustained High Load (200 RPS)"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Submit Vote as Authenticated User"
+    flow:
+      - post:
+          url: "/api/vote"
+          beforeRequest: "generateAuthCookie"
+          json:
+            candidateId: "candidate-uuid-1"

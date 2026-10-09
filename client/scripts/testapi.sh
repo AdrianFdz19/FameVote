@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Hardcode the deployed API Gateway endpoint URL
-API_URL="https://xj0kvayrx8.execute-api.us-east-1.amazonaws.com/prod/v1/vote"
+# Use environment variable if provided, otherwise fallback to default
+API_URL="${FAMVOTE_API_URL:-https://tntd2p21b4.execute-api.us-east-1.amazonaws.com/prod/v1/vote}"
 
 echo "=========================================="
 echo " 🚀 TESTING FAMVOTE INGESTION ENGINE "
@@ -18,7 +18,7 @@ RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$API_URL" \
      -d '{
            "candidateId": "cand_123",
            "voterId": "usr_789",
-           "timestamp": "2026-09-26T14:40:00Z"
+           "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
          }')
 
 HTTP_BODY=$(echo "$RESPONSE" | sed -e 's/HTTP_STATUS:.*//g')

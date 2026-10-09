@@ -12,6 +12,6 @@ export default defineConfig({
   },
   datasource: {
     // Añadimos el respaldo para evitar errores de compilación estrictos en CI/CD
-    url: process.env["DATABASE_URL"] ?? "",
+    url: process.env.DATABASE_URL
   },
 });

@@ -4,10 +4,20 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { redis } from '@/lib/redis';
 import { jwtVerify } from 'jose';
+import { fetch as undiciFetch, Agent } from 'undici';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-key-famvote-2026'
-);
+if (!process.env.JWT_SECRET) {
+  throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+
+// 2. Agente HTTP global para reutilizar sockets TCP Keep-Alive
+const awsAgent = new Agent({
+  keepAliveTimeout: 10000,
+  keepAliveMaxTimeout: 60000,
+  connections: 200, // Soporta hasta 200 sockets abiertos en paralelo
+});
 
 export async function POST(request: Request) {
   try {
@@ -108,7 +118,7 @@ export async function POST(request: Request) {
     // 5. Enviar evento a API Gateway / SQS (Asíncrono)
     const apiGatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_VOTE_URL;
     if (apiGatewayUrl) {
-      fetch(apiGatewayUrl, {
+      undiciFetch(apiGatewayUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -116,6 +126,7 @@ export async function POST(request: Request) {
           candidateId,
           timestamp: new Date().toISOString(),
         }),
+        dispatcher: awsAgent,
       }).catch((sqsError) => {
         console.error('Error enviando evento a API Gateway / SQS:', sqsError);
       });

@@ -21,11 +21,12 @@
     "bcryptjs": "^3.0.3",
     "ioredis": "^6.0.0",
     "jose": "^6.2.12",
-    "next": "16.3.4",
+    "next": "^16.4.0",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "swr": "^2.5.1"
+    "swr": "^2.5.1",
+    "undici": "^8.11.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -37,6 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.2",
+    "artillery": "^2.0.34",
     "dotenv": "^18.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
@@ -45,6 +47,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
+    "uuid": "^14.0.2",
     "vitest": "^5.0.3"
   }
 }

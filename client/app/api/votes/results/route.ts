@@ -9,7 +9,7 @@ const rawClient = new DynamoDBClient({
 });
 
 const docClient = DynamoDBDocumentClient.from(rawClient);
-const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE || 'famvote_records';
+const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE;
 const CACHE_KEY = 'cache:votes:total';
 const CACHE_TTL_SECONDS = 10; // Pequeña ventana de caché para proteger DynamoDB ante ráfagas de lectura
 

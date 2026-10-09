@@ -1,0 +1,19 @@
+config:
+  target: "http://localhost:3000"
+  processor: "./processor.cjs"
+  phases:
+    - duration: 1
+      arrivalRate: 1
+      name: "Single Request Test"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Single Vote Test"
+    flow:
+      - post:
+          url: "/api/vote"
+          beforeRequest: "generateAuthCookie"
+          json:
+            candidateId: "candidate-uuid-1"
