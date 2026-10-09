@@ -13,6 +13,8 @@ An event-driven, production-grade voting platform architected to handle high-con
 
 ---
 
+![Diagrama de Arquitectura](./docs/diagram/famvote_diagram.svg)
+
 ## 📐 System Architecture
 
 The core engineering objective of **FamVote** is to guarantee extreme responsiveness and throughput under heavy concurrent write loads. Instead of writing directly to a transactional SQL database on every user vote, the application utilizes a **two-tier asynchronous pipeline**:
@@ -52,6 +54,7 @@ flowchart TD
 ```
 
 ```markdown
+
 ### Component Specifications
 
 | Component | Infrastructure Layer | Primary Responsibility | Key Configuration / Mechanics |
