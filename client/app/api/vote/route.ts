@@ -6,11 +6,13 @@ import { redis } from '@/lib/redis';
 import { jwtVerify } from 'jose';
 import { fetch as undiciFetch, Agent } from 'undici';
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+function getJwtSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+  }
+  return new TextEncoder().encode(secret);
 }
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 // 2. Agente HTTP global para reutilizar sockets TCP Keep-Alive
 const awsAgent = new Agent({
@@ -34,7 +36,8 @@ export async function POST(request: Request) {
 
     let userId: string;
     try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
+      const secret = getJwtSecretKey();
+      const { payload } = await jwtVerify(token, secret);
       userId = (payload.userId || payload.sub) as string;
 
       if (!userId) {
@@ -141,7 +144,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error procesando el voto en Redis:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor.' },
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }

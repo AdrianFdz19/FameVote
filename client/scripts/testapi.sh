@@ -2,7 +2,7 @@
 set -e
 
 # Use environment variable if provided, otherwise fallback to default
-API_URL="${FAMVOTE_API_URL:-https://tntd2p21b4.execute-api.us-east-1.amazonaws.com/prod/v1/vote}"
+API_URL="${NEXT_PUBLIC_API_GATEWAY_VOTE_URL}"
 
 echo "=========================================="
 echo " 🚀 TESTING FAMVOTE INGESTION ENGINE "

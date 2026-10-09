@@ -5,11 +5,13 @@ import { SignJWT } from 'jose';
 import pool from '@/lib/db'; // Asegúrate de que la ruta sea correcta según tu estructura de proyecto
 
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+function getJwtSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+  }
+  return new TextEncoder().encode(secret);
 }
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function POST(request: Request) {
   try {
@@ -48,11 +50,12 @@ export async function POST(request: Request) {
     }
 
     // 3. Generar el JWT firmado con la librería 'jose'
+    const secretKey = getJwtSecretKey();
     const token = await new SignJWT({ userId: user.id, email: user.email })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime('24h') // El token expira en 24 horas
-      .sign(JWT_SECRET);
+      .sign(secretKey);
 
     // 4. Crear la respuesta y setear la cookie HttpOnly
     const response = NextResponse.json(
@@ -77,7 +80,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error en /api/auth/login:', error);
     return NextResponse.json(
-      { error },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

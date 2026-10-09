@@ -3,8 +3,12 @@ import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { redis } from '@/lib/redis';
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+function getJwtSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL: JWT_SECRET environment variable is not defined.');
+  }
+  return new TextEncoder().encode(secret);
 }
 
 export async function GET() {
@@ -17,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const secret = getJwtSecretKey();
     const { payload } = await jwtVerify(token, secret);
     const userId = payload.userId as string;
 
